@@ -30,6 +30,8 @@ from geoserver.catalog import Catalog
 from geoserver.resource import Coverage, FeatureType
 from isogeo_pysdk import Isogeo
 from openpyxl import Workbook
+from openpyxl.cell import get_column_letter
+from openpyxl.worksheet.properties import WorksheetProperties
 
 # ############################################################################
 # ########## GLOBALS #############
@@ -50,6 +52,35 @@ logfile.setLevel(logging.INFO)
 logfile.setFormatter(log_form)
 logger.addHandler(logfile)
 logger.info('=================================================')
+
+# ############################################################################
+# ########## FUNCTIONS #############
+# ##################################
+
+
+def tunning_worksheets(li_worksheets):
+    """CLEAN UP & TUNNING worksheets list."""
+    for sheet in li_worksheets:
+        # Freezing panes
+        c_freezed = sheet['B2']
+        sheet.freeze_panes = c_freezed
+
+        # Print properties
+        sheet.print_options.horizontalCentered = True
+        sheet.print_options.verticalCentered = True
+        sheet.page_setup.fitToWidth = 1
+        sheet.page_setup.orientation = sheet.ORIENTATION_LANDSCAPE
+
+        # Others properties
+        wsprops = sheet.sheet_properties
+        wsprops.filterMode = True
+
+        # enable filters
+        sheet.auto_filter.ref = str("A1:{}{}")\
+                                    .format(get_column_letter(sheet.max_column),
+                                            sheet.max_row)
+    pass
+
 
 # ############################################################################
 # ########## Classes #############
@@ -101,7 +132,7 @@ class ReadGeoServer():
         layers = cat.get_layers()
         logging.info("{} layers found".format(len(layers)))
         dico_layers = OrderedDict()
-        for layer in layers[7:12]:
+        for layer in layers[:1]:
             # print(layer.resource_type)
             lyr_title = layer.resource.title
             lyr_name = layer.name
@@ -129,20 +160,27 @@ class ReadGeoServer():
                                  lyr_name)
 
             # mapfish links
-            md_link_mapfish = "{0}/mapfishapp/?layername={1}"\
-                              "&owstype=WMSLayer&owsurl={0}/"\
-                              "geoserver/{2}/ows"\
-                              .format(url_base,
-                                      lyr_name,
-                                      lyr_wkspace)
+            md_link_mapfish_wms = "{0}/mapfishapp/?layername={1}"\
+                                  "&owstype=WMSLayer&owsurl={0}/"\
+                                  "geoserver/{2}/ows"\
+                                  .format(url_base,
+                                          lyr_name,
+                                          lyr_wkspace)
 
-            md_link_mapfish = "{0}/mapfishapp/?cache=PreferNetwork"\
-                              "&crs=EPSG:2154&format=GeoTIFF"\
-                              "&identifier={1}:{2}"\
-                              "&url={0}/geoserver/ows?"\
-                              .format(url_base,
-                                      lyr_wkspace,
-                                      lyr_name)
+            md_link_mapfish_wfs = "{0}/mapfishapp/?layername={1}"\
+                                  "&owstype=WFSLayer&owsurl={0}/"\
+                                  "geoserver/{2}/ows"\
+                                  .format(url_base,
+                                          lyr_name,
+                                          lyr_wkspace)
+
+            md_link_mapfish_wcs = "{0}/mapfishapp/?cache=PreferNetwork"\
+                                  "&crs=EPSG:2154&format=GeoTIFF"\
+                                  "&identifier={1}:{2}"\
+                                  "&url={0}/geoserver/ows?"\
+                                  .format(url_base,
+                                          lyr_wkspace,
+                                          lyr_name)
 
             # OC links
             md_link_oc_wms = "{0}/geoserver/{1}/wms?layers={1}:{2}"\
@@ -150,6 +188,11 @@ class ReadGeoServer():
                                      lyr_wkspace,
                                      lyr_name)
             md_link_oc_wfs = "{0}/geoserver/{1}/ows?typeName={1}:{2}"\
+                             .format(url_base,
+                                     lyr_wkspace,
+                                     lyr_name)
+
+            md_link_oc_wcs = "{0}/geoserver/{1}/ows?typeName={1}:{2}"\
                              .format(url_base,
                                      lyr_wkspace,
                                      lyr_name)
@@ -179,14 +222,23 @@ class ReadGeoServer():
             #     pass
 
             # if layer.name == "bd_topo_reseau_routier_route_primaire":
-            #     print(layer.resource.metadata)
+            #     print(type(layer.resource.metadata), layer.resource.metadata)
             #     print(layer.resource.metadata_links)
+            #     # print(type(layer.resource.metadata_links[0]))
+            #     test = "{}/portail/geocatalogue?uuid=f6512b1a67404e59bb7ff8aba94efe18"\
+            #            .format(url_base)
+            #     print(test)
             #     # print(dir(layer.resource.writers.get("metadataLinks").func_dict))
             #     # print(layer.resource.writers.get("metadataLinks").func_dict.keys())
             #     # try to set metadata
-            #     lyr = cat.get_layer("bd_topo_reseau_routier_route_primaire")
-            #     lyr.resource.metadata_links.append(('text/html', 'other', 'srv_link_html'))
-            #     cat.save(lyr)
+            #     rzourc = cat.get_resource("bd_topo_reseau_routier_route_primaire",
+            #                               store=layer.resource._store.name)
+            #     print(type(rzourc), dir(rzourc))
+            #     print(type(rzourc.metadata_links))
+            #     rzourc.metadata_links = [('text/html', 'other', 'hohoho'),]
+            #     # rzourc.metadata_links.append(('text/html', 'other', 'hohoho'))
+            #     cat.save(rzourc)
+
             # else:
             #     pass
 
@@ -196,7 +248,10 @@ class ReadGeoServer():
                                        "store_type": layer.resource._store.type,
                                        "lyr_type": lyr_type,
                                        "md_link_dl": md_link_dl,
-                                       "md_link_mapfish": md_link_mapfish,
+                                       "md_link_mapfish": md_link_mapfish_wms,
+                                       "md_link_mapfish_wms": md_link_mapfish_wms,
+                                       "md_link_mapfish_wfs": md_link_mapfish_wfs,
+                                       "md_link_mapfish_wcs": md_link_mapfish_wcs,
                                        "md_link_oc_wms": md_link_oc_wms,
                                        "md_link_oc_wfs": md_link_oc_wfs,
                                        "md_link_csw_wms": md_link_csw_wms,
@@ -291,6 +346,21 @@ if __name__ == '__main__':
     # ------------------------------------------------------------------------
 
     # ## EXCELs ############
+    # -- WMS -------------------------------------------------------
+    wb_gs_full = Workbook()
+    dest_gs_full = 'ppigev3_gs_full.xlsx'
+
+    ws_gs_full = wb_gs_full.active
+    ws_gs_full.title = "GEOSERVER - FULL"
+
+    ws_gs_full["A1"] = "GS_WORKSPACE"
+    ws_gs_full["B1"] = "GS_DATASTORE_NAME"
+    ws_gs_full["C1"] = "GS_DATASTORE_TYPE"
+    ws_gs_full["D1"] = "GS_SOURCE_TYPE"
+    ws_gs_full["E1"] = "GS_NOM"
+    ws_gs_full["F1"] = "GS_TITRE"
+    ws_gs_full["G1"] = "MD_v3"
+
     # -- WMS -------------------------------------------------------
     wb_wms = Workbook()
     dest_wms = 'ppigev3_wms_OC.xlsx'
@@ -401,6 +471,7 @@ if __name__ == '__main__':
         layer = layers.get(lyr)
         row = layers.keys().index(lyr) + 2
         # title
+        ws_gs_full["F{}".format(row)] = layer.get("title")
         ws_wms["A{}".format(row)] = layer.get("title")
         ws_wfs["A{}".format(row)] = layer.get("title")
         ws_dl["A{}".format(row)] = layer.get("title")
@@ -410,6 +481,7 @@ if __name__ == '__main__':
 
         # label
         tronqued_title = layer.get("title").rsplit(" -")[0]
+        ws_gs_full["E{}".format(row)] = lyr
         ws_wms["B{}".format(row)] = "Couche WMS - {}".format(tronqued_title)
         ws_wfs["B{}".format(row)] = "Couche WFS - {}".format(tronqued_title)
         ws_dl["B{}".format(row)] = "Extraire - {}".format(tronqued_title)
@@ -417,7 +489,7 @@ if __name__ == '__main__':
         ws_csw_wms["B{}".format(row)] = lyr
         ws_csw_wfs["B{}".format(row)] = lyr
 
-        # type
+        # link type
         ws_wms["C{}".format(row)] = "wms"
         ws_wfs["C{}".format(row)] = "wfs"
         ws_dl["C{}".format(row)] = "data"
@@ -450,6 +522,7 @@ if __name__ == '__main__':
         ws_csw_wfs["F{}".format(row)] = ""
 
         # datastore type
+        ws_gs_full["C{}".format(row)] = layer.get("store_type")
         ws_wms["G{}".format(row)] = layer.get("store_type")
         ws_wfs["G{}".format(row)] = layer.get("store_type")
         ws_dl["G{}".format(row)] = layer.get("store_type")
@@ -458,6 +531,7 @@ if __name__ == '__main__':
         ws_csw_wfs["G{}".format(row)] = layer.get("store_type")
 
         # source type
+        ws_gs_full["D{}".format(row)] = layer.get("lyr_type")
         ws_wms["H{}".format(row)] = layer.get("lyr_type")
         ws_wfs["H{}".format(row)] = layer.get("lyr_type")
         ws_dl["H{}".format(row)] = layer.get("lyr_type")
@@ -466,6 +540,7 @@ if __name__ == '__main__':
         ws_csw_wfs["H{}".format(row)] = layer.get("lyr_type")
 
         # workspace
+        ws_gs_full["A{}".format(row)] = layer.get("workspace")
         ws_wms["I{}".format(row)] = layer.get("workspace")
         ws_wfs["I{}".format(row)] = layer.get("workspace")
         ws_dl["I{}".format(row)] = layer.get("workspace")
@@ -474,6 +549,7 @@ if __name__ == '__main__':
         ws_csw_wfs["I{}".format(row)] = layer.get("workspace")
 
         # datastore name
+        ws_gs_full["B{}".format(row)] = layer.get("store_name")
         ws_wms["J{}".format(row)] = layer.get("store_name")
         ws_wfs["J{}".format(row)] = layer.get("store_name")
         ws_dl["J{}".format(row)] = layer.get("store_name")
@@ -549,7 +625,21 @@ if __name__ == '__main__':
         ws_external["D{}".format(row)] = "other"
         ws_external["E{}".format(row)] = md_uuid_pure
 
+    # -- TUNNING -------------------------------------------------------
+    li_worksheets = [ws_dl,
+                     ws_csw_wfs,
+                     ws_csw_wms,
+                     ws_external,
+                     ws_fish,
+                     ws_gs_full,
+                     ws_srvmd,
+                     ws_wfs,
+                     ws_wms,
+                     ]
+    tunning_worksheets(li_worksheets)
+
     # -- SAVE -------------------------------------------------------
+    wb_gs_full.save(filename=dest_gs_full)
     wb_wms.save(filename=dest_wms)
     wb_wfs.save(filename=dest_wfs)
     wb_download.save(filename=dest_download)
