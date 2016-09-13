@@ -34,14 +34,13 @@ from openpyxl.cell import get_column_letter
 from openpyxl.worksheet.properties import WorksheetProperties
 
 # ############################################################################
-# ########## GLOBALS #############
+# ########## GLOBALS ###############
 # ##################################
 # url_base = "https://preprod.ppige-npdc.fr"
-url_base = "https://www.ppige-npdc.fr"
+# url_base = "https://www.ppige-npdc.fr"
 
 
 # LOG FILE ##
-# see: http://sametmax.com/ecrire-des-logs-en-python/
 logger = logging.getLogger()
 logging.captureWarnings(True)
 logger.setLevel(logging.INFO)  # all errors will be get
@@ -85,6 +84,7 @@ def tunning_worksheets(li_worksheets):
 # ############################################################################
 # ########## Classes #############
 # ################################
+
 
 class ReadGeoServer():
     def __init__(self, gs_axx, dico_gs, tipo, txt=''):
@@ -132,7 +132,7 @@ class ReadGeoServer():
         layers = cat.get_layers()
         logging.info("{} layers found".format(len(layers)))
         dico_layers = OrderedDict()
-        for layer in layers[:1]:
+        for layer in layers[:5]:
             # print(layer.resource_type)
             lyr_title = layer.resource.title
             lyr_name = layer.name
@@ -282,14 +282,14 @@ if __name__ == '__main__':
     from ConfigParser import SafeConfigParser   # to manage options.ini
 
     # ------------ Settings from ini file ----------------
-    if not path.isfile(path.realpath(r"settings.ini")):
-        logging.error("settings.ini file missing.")
-        raise ValueError("settings.ini file missing.")
-    else:
-        pass
+    # if not path.isfile(path.realpath(r"settings.ini")):
+    #     logging.error("settings.ini file missing.")
+    #     raise ValueError("settings.ini file missing.")
+    # else:
+    #     pass
 
     config = SafeConfigParser()
-    config.read(r"settings.ini")
+    config.read(r"settings_SMAVD.ini")
 
     settings = {s: dict(config.items(s)) for s in config.sections()}
 
@@ -297,12 +297,18 @@ if __name__ == '__main__':
     app_id = settings.get('isogeo').get('app_id')
     app_secret = settings.get('isogeo').get('app_secret')
     app_lang = settings.get('isogeo').get('app_lang')
+    csw_share_id = settings.get('isogeo').get('csw_share_id')
+    csw_share_token = settings.get('isogeo').get('csw_share_token')
 
     # GeoServer
     gs_url = settings.get('geoserver').get('gs_url')
     gs_user = settings.get('geoserver').get('gs_user')
     gs_pswd = settings.get('geoserver').get('gs_pswd')
     gs_ssl_off = settings.get('geoserver').get('gs_ssl_off')
+
+    # Output
+    out_prefix = settings.get('output').get('out_prefix')
+    url_base = settings.get('output').get('url_base')
     # ------------------------------------------------------------------------
 
     # ------------ GEOSERVER -------------------------------------------------
@@ -348,7 +354,7 @@ if __name__ == '__main__':
     # ## EXCELs ############
     # -- WMS -------------------------------------------------------
     wb_gs_full = Workbook()
-    dest_gs_full = 'ppigev3_gs_full.xlsx'
+    dest_gs_full = '{}_gs_full.xlsx'.format(out_prefix)
 
     ws_gs_full = wb_gs_full.active
     ws_gs_full.title = "GEOSERVER - FULL"
@@ -359,11 +365,11 @@ if __name__ == '__main__':
     ws_gs_full["D1"] = "GS_SOURCE_TYPE"
     ws_gs_full["E1"] = "GS_NOM"
     ws_gs_full["F1"] = "GS_TITRE"
-    ws_gs_full["G1"] = "MD_v3"
+    ws_gs_full["G1"] = "MD_UUID"
 
     # -- WMS -------------------------------------------------------
     wb_wms = Workbook()
-    dest_wms = 'ppigev3_wms_OC.xlsx'
+    dest_wms = '{}_wms_OC.xlsx'.format(out_prefix)
 
     ws_wms = wb_wms.active
     ws_wms.title = "WMS"
@@ -381,7 +387,7 @@ if __name__ == '__main__':
 
     # -- WFS -------------------------------------------------------
     wb_wfs = Workbook()
-    dest_wfs = 'ppigev3_wfs_OC.xlsx'
+    dest_wfs = '{}_wfs_OC.xlsx'.format(out_prefix)
 
     ws_wfs = wb_wfs.active
     ws_wfs.title = "WFS"
@@ -399,7 +405,7 @@ if __name__ == '__main__':
 
     # -- DOWNLOAD ----------------------------------------------------
     wb_download = Workbook()
-    dest_download = 'ppigev3_download_OC.xlsx'
+    dest_download = '{}_download_OC.xlsx'.format(out_prefix)
 
     ws_dl = wb_download.active
     ws_dl.title = "DOWNLOAD"
@@ -417,25 +423,39 @@ if __name__ == '__main__':
 
     # -- MAPFISH APP -------------------------------------------------
     wb_mapfish = Workbook()
-    dest_mapfish = 'ppigev3_mapfish.xlsx'
+    dest_mapfish = '{}_mapfish.xlsx'.format(out_prefix)
 
-    ws_fish = wb_mapfish.active
-    ws_fish.title = "MAPFISH"
+    ws_fish_wms = wb_mapfish.active
+    ws_fish_wms.title = "MAPFISH - WMS"
 
-    ws_fish["A1"] = "TITRE GEOSERVER"
-    ws_fish["B1"] = "INTITULE"
-    ws_fish["C1"] = "KIND"
-    ws_fish["D1"] = "URL"
-    ws_fish["E1"] = "ACTION"
-    ws_fish["F1"] = "ASSOCIER_A"
-    ws_fish["G1"] = "GS_DATASTORE_TYPE"
-    ws_fish["H1"] = "GS_SOURCE_TYPE"
-    ws_fish["I1"] = "GS_WORKSPACE"
-    ws_fish["J1"] = "GS_DATASTORE_NAME"
+    ws_fish_wms["A1"] = "TITRE GEOSERVER"
+    ws_fish_wms["B1"] = "INTITULE"
+    ws_fish_wms["C1"] = "KIND"
+    ws_fish_wms["D1"] = "URL"
+    ws_fish_wms["E1"] = "ACTION"
+    ws_fish_wms["F1"] = "ASSOCIER_A"
+    ws_fish_wms["G1"] = "GS_DATASTORE_TYPE"
+    ws_fish_wms["H1"] = "GS_SOURCE_TYPE"
+    ws_fish_wms["I1"] = "GS_WORKSPACE"
+    ws_fish_wms["J1"] = "GS_DATASTORE_NAME"
+
+    ws_fish_wfs = wb_mapfish.create_sheet()
+    ws_fish_wfs.title = "MAPFISH - WFS"
+
+    ws_fish_wfs["A1"] = "TITRE GEOSERVER"
+    ws_fish_wfs["B1"] = "INTITULE"
+    ws_fish_wfs["C1"] = "KIND"
+    ws_fish_wfs["D1"] = "URL"
+    ws_fish_wfs["E1"] = "ACTION"
+    ws_fish_wfs["F1"] = "ASSOCIER_A"
+    ws_fish_wfs["G1"] = "GS_DATASTORE_TYPE"
+    ws_fish_wfs["H1"] = "GS_SOURCE_TYPE"
+    ws_fish_wfs["I1"] = "GS_WORKSPACE"
+    ws_fish_wfs["J1"] = "GS_DATASTORE_NAME"
 
     # -- CSW QUERIER ------------------------------------------------
     wb_cswquerier = Workbook()
-    dest_cswquerier = 'ppigev3_cswquerier.xlsx'
+    dest_cswquerier = '{}_cswquerier.xlsx'.format(out_prefix)
 
     ws_csw_wms = wb_cswquerier.active
     ws_csw_wms.title = "CSW QUERIER - WMS"
@@ -475,7 +495,8 @@ if __name__ == '__main__':
         ws_wms["A{}".format(row)] = layer.get("title")
         ws_wfs["A{}".format(row)] = layer.get("title")
         ws_dl["A{}".format(row)] = layer.get("title")
-        ws_fish["A{}".format(row)] = layer.get("title")
+        ws_fish_wms["A{}".format(row)] = layer.get("title")
+        ws_fish_wfs["A{}".format(row)] = layer.get("title")
         ws_csw_wms["A{}".format(row)] = layer.get("title")
         ws_csw_wfs["A{}".format(row)] = layer.get("title")
 
@@ -485,7 +506,8 @@ if __name__ == '__main__':
         ws_wms["B{}".format(row)] = "Couche WMS - {}".format(tronqued_title)
         ws_wfs["B{}".format(row)] = "Couche WFS - {}".format(tronqued_title)
         ws_dl["B{}".format(row)] = "Extraire - {}".format(tronqued_title)
-        ws_fish["B{}".format(row)] = "Visualiseur PPIGE - {}".format(tronqued_title)
+        ws_fish_wms["B{}".format(row)] = "Visualiseur - {} (WMS)".format(tronqued_title)
+        ws_fish_wfs["B{}".format(row)] = "Visualiseur - {} (WFS)".format(tronqued_title)
         ws_csw_wms["B{}".format(row)] = lyr
         ws_csw_wfs["B{}".format(row)] = lyr
 
@@ -493,7 +515,8 @@ if __name__ == '__main__':
         ws_wms["C{}".format(row)] = "wms"
         ws_wfs["C{}".format(row)] = "wfs"
         ws_dl["C{}".format(row)] = "data"
-        ws_fish["C{}".format(row)] = "url"
+        ws_fish_wms["C{}".format(row)] = "url"
+        ws_fish_wfs["C{}".format(row)] = "url"
         ws_csw_wms["C{}".format(row)] = "wms"
         ws_csw_wfs["C{}".format(row)] = "wfs"
 
@@ -501,7 +524,8 @@ if __name__ == '__main__':
         ws_wms["D{}".format(row)] = layer.get("md_link_oc_wms")
         ws_wfs["D{}".format(row)] = layer.get("md_link_oc_wfs")
         ws_dl["D{}".format(row)] = layer.get("md_link_dl")
-        ws_fish["D{}".format(row)] = layer.get("md_link_mapfish")
+        ws_fish_wms["D{}".format(row)] = layer.get("md_link_mapfish_wms")
+        ws_fish_wfs["D{}".format(row)] = layer.get("md_link_mapfish_wfs")
         ws_csw_wms["D{}".format(row)] = layer.get("md_link_csw_wms")
         ws_csw_wfs["D{}".format(row)] = layer.get("md_link_csw_wfs")
 
@@ -509,7 +533,8 @@ if __name__ == '__main__':
         ws_wms["E{}".format(row)] = "view"
         ws_wfs["E{}".format(row)] = "view"
         ws_dl["E{}".format(row)] = "download"
-        ws_fish["E{}".format(row)] = "data"
+        ws_fish_wms["E{}".format(row)] = "view"
+        ws_fish_wfs["E{}".format(row)] = "view"
         ws_csw_wms["E{}".format(row)] = "view"
         ws_csw_wfs["E{}".format(row)] = "[view,download]"
 
@@ -517,7 +542,8 @@ if __name__ == '__main__':
         ws_wms["F{}".format(row)] = ""
         ws_wfs["F{}".format(row)] = ""
         ws_dl["F{}".format(row)] = ""
-        ws_fish["F{}".format(row)] = ""
+        ws_fish_wms["F{}".format(row)] = ""
+        ws_fish_wfs["F{}".format(row)] = ""
         ws_csw_wms["F{}".format(row)] = ""
         ws_csw_wfs["F{}".format(row)] = ""
 
@@ -526,7 +552,8 @@ if __name__ == '__main__':
         ws_wms["G{}".format(row)] = layer.get("store_type")
         ws_wfs["G{}".format(row)] = layer.get("store_type")
         ws_dl["G{}".format(row)] = layer.get("store_type")
-        ws_fish["G{}".format(row)] = layer.get("store_type")
+        ws_fish_wms["G{}".format(row)] = layer.get("store_type")
+        ws_fish_wfs["G{}".format(row)] = layer.get("store_type")
         ws_csw_wms["G{}".format(row)] = layer.get("store_type")
         ws_csw_wfs["G{}".format(row)] = layer.get("store_type")
 
@@ -535,7 +562,8 @@ if __name__ == '__main__':
         ws_wms["H{}".format(row)] = layer.get("lyr_type")
         ws_wfs["H{}".format(row)] = layer.get("lyr_type")
         ws_dl["H{}".format(row)] = layer.get("lyr_type")
-        ws_fish["H{}".format(row)] = layer.get("lyr_type")
+        ws_fish_wms["H{}".format(row)] = layer.get("lyr_type")
+        ws_fish_wfs["H{}".format(row)] = layer.get("lyr_type")
         ws_csw_wms["H{}".format(row)] = layer.get("lyr_type")
         ws_csw_wfs["H{}".format(row)] = layer.get("lyr_type")
 
@@ -544,7 +572,8 @@ if __name__ == '__main__':
         ws_wms["I{}".format(row)] = layer.get("workspace")
         ws_wfs["I{}".format(row)] = layer.get("workspace")
         ws_dl["I{}".format(row)] = layer.get("workspace")
-        ws_fish["I{}".format(row)] = layer.get("workspace")
+        ws_fish_wms["I{}".format(row)] = layer.get("workspace")
+        ws_fish_wfs["I{}".format(row)] = layer.get("workspace")
         ws_csw_wms["I{}".format(row)] = layer.get("workspace")
         ws_csw_wfs["I{}".format(row)] = layer.get("workspace")
 
@@ -553,13 +582,14 @@ if __name__ == '__main__':
         ws_wms["J{}".format(row)] = layer.get("store_name")
         ws_wfs["J{}".format(row)] = layer.get("store_name")
         ws_dl["J{}".format(row)] = layer.get("store_name")
-        ws_fish["J{}".format(row)] = layer.get("store_name")
+        ws_fish_wms["J{}".format(row)] = layer.get("store_name")
+        ws_fish_wfs["J{}".format(row)] = layer.get("store_name")
         ws_csw_wms["J{}".format(row)] = layer.get("store_name")
         ws_csw_wfs["J{}".format(row)] = layer.get("store_name")
 
     # -- SERVICES  METADATA ---------------------------------------------------
     wb_srvmd = Workbook()
-    dest_srvmd = 'ppigev3_srv_md.xlsx'
+    dest_srvmd = '{}_srv_md.xlsx'.format(out_prefix)
 
     ws_srvmd = wb_srvmd.active
     ws_srvmd.title = "GEOSERVER_METADATA"
@@ -574,7 +604,7 @@ if __name__ == '__main__':
 
     # -- METADATA LINK for EXTERNAL  ------------------------------------------
     wb_external = Workbook()
-    dest_external = 'ppigev3_md_external.xlsx'
+    dest_external = '{}_md_external.xlsx'.format(out_prefix)
 
     ws_external = wb_external.active
     ws_external.title = "METADATA_DIRECT_LINK"
@@ -601,13 +631,15 @@ if __name__ == '__main__':
 
         # XML metadata
         srv_link_xml = "http://services.api.isogeo.com/ows/s/"\
-                       "cc1ba385918d40cc8078063121873550/"\
-                       "m0_ZBCtJU3nJj1S3Q2FIAa6u_KZ70?"\
+                       "{1}/"\
+                       "{2}?"\
                        "service=CSW&version=2.0.2&request=GetRecordById"\
                        "&id=urn:isogeo:metadata:uuid:{0}&"\
                        "elementsetname=full&outputSchema="\
                        "http://www.isotc211.org/2005/gmd"\
-                       .format(md_uuid_formatted)
+                       .format(md_uuid_formatted,
+                               csw_share_id,
+                               csw_share_token)
 
         # storing
         ws_srvmd["A{}".format(row)] = md_uuid_pure
@@ -630,7 +662,8 @@ if __name__ == '__main__':
                      ws_csw_wfs,
                      ws_csw_wms,
                      ws_external,
-                     ws_fish,
+                     ws_fish_wfs,
+                     ws_fish_wms,
                      ws_gs_full,
                      ws_srvmd,
                      ws_wfs,
