@@ -29,7 +29,7 @@ from collections import OrderedDict
 from geoserver.catalog import Catalog
 from geoserver.resource import Coverage, FeatureType
 from isogeo_pysdk import Isogeo
-from openpyxl import Workbook
+from openpyxl import load_workbook, Workbook
 from openpyxl.cell import get_column_letter
 from openpyxl.worksheet.properties import WorksheetProperties
 
@@ -38,7 +38,7 @@ from openpyxl.worksheet.properties import WorksheetProperties
 # ##################################
 # url_base = "https://preprod.ppige-npdc.fr"
 # url_base = "https://www.ppige-npdc.fr"
-
+# input_xlsx = r"Correspondance services - métadonnées v3.xlsx"
 
 # LOG FILE ##
 logger = logging.getLogger()
@@ -100,6 +100,8 @@ class ReadGeoServer():
                       disable_ssl_certificate_validation=gs_axx[3])
         # print(dir(cat))
 
+
+
         # -- WORKSPACES -------------------------------------------------------
         workspaces = cat.get_workspaces()
         for wk in workspaces:
@@ -108,18 +110,18 @@ class ReadGeoServer():
         # print(dir(wk))
 
         # -- STORES -----------------------------------------------------------
-        stores = cat.get_stores()
-        for st in stores:
-            # print(st.name, st.enabled, st.href, st.resource_type)
-            if hasattr(st, 'url'):
-                url = st.url
-            elif hasattr(st, 'resource_url'):
-                url = st.resource_url
-            else:
-                print(dir(st))
+        # stores = cat.get_stores()
+        # for st in stores:
+        #     # print(st.name, st.enabled, st.href, st.resource_type)
+        #     if hasattr(st, 'url'):
+        #         url = st.url
+        #     elif hasattr(st, 'resource_url'):
+        #         url = st.resource_url
+        #     else:
+        #         print(dir(st))
 
-            dico_gs.get(st.workspace.name)[1][st.name] = {"ds_type": st.type,
-                                                          "ds_url": url}
+        #     dico_gs.get(st.workspace.name)[1][st.name] = {"ds_type": st.type,
+        #                                                   "ds_url": url}
 
         # print(dir(st))
         # print(st.url)
@@ -132,7 +134,7 @@ class ReadGeoServer():
         layers = cat.get_layers()
         logging.info("{} layers found".format(len(layers)))
         dico_layers = OrderedDict()
-        for layer in layers[:5]:
+        for layer in layers:
             # print(layer.resource_type)
             lyr_title = layer.resource.title
             lyr_name = layer.name
@@ -153,7 +155,7 @@ class ReadGeoServer():
             # # METADATA LINKS #
             # download link
             md_link_dl = "{0}/geoserver/{1}/ows?request=GetFeature"\
-                         "&service=WFS&typeName={1}%3A{2}&version=1.0.0"\
+                         "&service=WFS&typeName={1}%3A{2}&version=2.0.0"\
                          "&outputFormat=SHAPE-ZIP"\
                          .format(url_base,
                                  lyr_wkspace,
@@ -201,7 +203,7 @@ class ReadGeoServer():
             md_link_csw_wms = "{0}/geoserver/ows?service=wms&version=1.3.0"\
                               "&request=GetCapabilities".format(url_base)
 
-            md_link_csw_wfs = "{0}/geoserver/ows?service=wfs&version=1.0.0"\
+            md_link_csw_wfs = "{0}/geoserver/ows?service=wfs&version=2.0.0"\
                               "&request=GetCapabilities".format(url_base)
 
             # # # SERVICE LINKS #
@@ -214,12 +216,26 @@ class ReadGeoServer():
                                                lyr_wkspace,
                                                lyr_name)
 
-            # if lyr_name in li_paths:
-            #     print("This is a PATH match baby!")
-            # elif lyr_name in li_names:
-            #     print("This is a NAME match baby!")
-            # else:
-            #     pass
+            # HTML metadata
+            md_uuid_pure = dict_match_gs_md.get(lyr_name, "")
+            srv_link_html = "{}/portail/geocatalogue?uuid={}"\
+                            .format(url_base, md_uuid_pure)
+
+            # XML metadata
+            md_uuid_formatted = "{}-{}-{}-{}-{}".format(md_uuid_pure[:8],
+                                                        md_uuid_pure[8:12],
+                                                        md_uuid_pure[12:16],
+                                                        md_uuid_pure[16:20],
+                                                        md_uuid_pure[20:])
+            srv_link_xml = "http://services.api.isogeo.com/ows/s/"\
+                           "{1}/{2}?"\
+                           "service=CSW&version=2.0.2&request=GetRecordById"\
+                           "&id=urn:isogeo:metadata:uuid:{0}&"\
+                           "elementsetname=full&outputSchema="\
+                           "http://www.isotc211.org/2005/gmd"\
+                           .format(md_uuid_formatted,
+                                   csw_share_id,
+                                   csw_share_token)
 
             # if layer.name == "bd_topo_reseau_routier_route_primaire":
             #     print(type(layer.resource.metadata), layer.resource.metadata)
@@ -257,6 +273,9 @@ class ReadGeoServer():
                                        "md_link_csw_wms": md_link_csw_wms,
                                        "md_link_csw_wfs": md_link_csw_wfs,
                                        "gs_link_edit": gs_link_edit,
+                                       "srv_link_html": srv_link_html,
+                                       "srv_link_xml": srv_link_xml,
+                                       "md_id_matching": md_uuid_pure
                                        }
 
             # mem clean up
@@ -289,7 +308,7 @@ if __name__ == '__main__':
     #     pass
 
     config = SafeConfigParser()
-    config.read(r"settings_SMAVD.ini")
+    config.read(r"settings.ini")
 
     settings = {s: dict(config.items(s)) for s in config.sections()}
 
@@ -309,7 +328,23 @@ if __name__ == '__main__':
     # Output
     out_prefix = settings.get('output').get('out_prefix')
     url_base = settings.get('output').get('url_base')
+
+    # Input
+    input_xlsx = settings.get('input').get('in_matching')
     # ------------------------------------------------------------------------
+
+    # METADATA Links for GeoServer
+    wb = load_workbook(filename=input_xlsx,
+                       read_only=True,
+                       guess_types=True,
+                       data_only=True,
+                       # use_iterators=True
+                       )
+    ws = wb.worksheets[0]  # first sheet
+
+    dict_match_gs_md = {}
+    for row in ws.iter_rows(row_offset=1):
+        dict_match_gs_md[row[4].value] = row[6].value
 
     # ------------ GEOSERVER -------------------------------------------------
     # listing WFS
@@ -405,7 +440,7 @@ if __name__ == '__main__':
 
     # -- DOWNLOAD ----------------------------------------------------
     wb_download = Workbook()
-    dest_download = '{}_download_OC.xlsx'.format(out_prefix)
+    dest_download = '{}_download_wfs.xlsx'.format(out_prefix)
 
     ws_dl = wb_download.active
     ws_dl.title = "DOWNLOAD"
@@ -539,13 +574,14 @@ if __name__ == '__main__':
         ws_csw_wfs["E{}".format(row)] = "[view,download]"
 
         # Isogeo metadata
-        ws_wms["F{}".format(row)] = ""
-        ws_wfs["F{}".format(row)] = ""
-        ws_dl["F{}".format(row)] = ""
-        ws_fish_wms["F{}".format(row)] = ""
-        ws_fish_wfs["F{}".format(row)] = ""
-        ws_csw_wms["F{}".format(row)] = ""
-        ws_csw_wfs["F{}".format(row)] = ""
+        ws_gs_full["G{}".format(row)] = layer.get("md_id_matching")
+        ws_wms["F{}".format(row)] = layer.get("md_id_matching")
+        ws_wfs["F{}".format(row)] = layer.get("md_id_matching")
+        ws_dl["F{}".format(row)] = layer.get("md_id_matching")
+        ws_fish_wms["F{}".format(row)] = layer.get("md_id_matching")
+        ws_fish_wfs["F{}".format(row)] = layer.get("md_id_matching")
+        ws_csw_wms["F{}".format(row)] = layer.get("md_id_matching")
+        ws_csw_wfs["F{}".format(row)] = layer.get("md_id_matching")
 
         # datastore type
         ws_gs_full["C{}".format(row)] = layer.get("store_type")
