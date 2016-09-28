@@ -21,6 +21,7 @@ from __future__ import (absolute_import, print_function, unicode_literals)
 import logging
 from logging.handlers import RotatingFileHandler
 from os import path
+from uuid import UUID
 
 # Python 3 backported
 from collections import OrderedDict
@@ -46,7 +47,7 @@ logging.captureWarnings(True)
 logger.setLevel(logging.INFO)  # all errors will be get
 log_form = logging.Formatter("%(asctime)s || %(levelname)s "
                              "|| %(module)s || %(message)s")
-logfile = RotatingFileHandler("LOG_isogeo2office.log", "a", 10000000, 2)
+logfile = RotatingFileHandler("LOG_infos_geoserver.log", "a", 10000000, 2)
 logfile.setLevel(logging.INFO)
 logfile.setFormatter(log_form)
 logger.addHandler(logfile)
@@ -79,6 +80,21 @@ def tunning_worksheets(li_worksheets):
                                     .format(get_column_letter(sheet.max_column),
                                             sheet.max_row)
     pass
+
+def is_uuid(uuid_string, version=4):
+    """Si uuid_string est un code hex valide mais pas un uuid valid,
+    UUID() va quand même le convertir en uuid valide. Pour se prémunir
+    de ce problème, on check la version original (sans les tirets) avec
+        # le code hex généré qui doivent être les mêmes.
+    """
+    try:
+        uid = UUID(uuid_string, version=version)
+        return uid.hex == uuid_string.replace('-', '')
+    except ValueError:
+        return False
+    except TypeError:
+        logger.error("uuid must be a string")
+        return False
 
 
 # ############################################################################
@@ -216,47 +232,42 @@ class ReadGeoServer():
                                                lyr_wkspace,
                                                lyr_name)
 
-            # HTML metadata
-            md_uuid_pure = dict_match_gs_md.get(lyr_name, "")
-            srv_link_html = "{}/portail/geocatalogue?uuid={}"\
-                            .format(url_base, md_uuid_pure)
+            # Metadata links (service => metadata)
+            if is_uuid(dict_match_gs_md.get(lyr_name)):
+                # HTML metadata
+                md_uuid_pure = dict_match_gs_md.get(lyr_name)
+                srv_link_html = "{}/portail/geocatalogue?uuid={}"\
+                                .format(url_base, md_uuid_pure)
 
-            # XML metadata
-            md_uuid_formatted = "{}-{}-{}-{}-{}".format(md_uuid_pure[:8],
-                                                        md_uuid_pure[8:12],
-                                                        md_uuid_pure[12:16],
-                                                        md_uuid_pure[16:20],
-                                                        md_uuid_pure[20:])
-            srv_link_xml = "http://services.api.isogeo.com/ows/s/"\
-                           "{1}/{2}?"\
-                           "service=CSW&version=2.0.2&request=GetRecordById"\
-                           "&id=urn:isogeo:metadata:uuid:{0}&"\
-                           "elementsetname=full&outputSchema="\
-                           "http://www.isotc211.org/2005/gmd"\
-                           .format(md_uuid_formatted,
-                                   csw_share_id,
-                                   csw_share_token)
+                # XML metadata
+                md_uuid_formatted = "{}-{}-{}-{}-{}".format(md_uuid_pure[:8],
+                                                            md_uuid_pure[8:12],
+                                                            md_uuid_pure[12:16],
+                                                            md_uuid_pure[16:20],
+                                                            md_uuid_pure[20:])
+                srv_link_xml = "http://services.api.isogeo.com/ows/s/"\
+                               "{1}/{2}?"\
+                               "service=CSW&version=2.0.2&request=GetRecordById"\
+                               "&id=urn:isogeo:metadata:uuid:{0}&"\
+                               "elementsetname=full&outputSchema="\
+                               "http://www.isotc211.org/2005/gmd"\
+                               .format(md_uuid_formatted,
+                                       csw_share_id,
+                                       csw_share_token)
+                # add to GeoServer layer
+                rzourc = cat.get_resource(lyr_name,
+                                          store=layer.resource._store.name)
+                rzourc.metadata_links = [('text/html', 'TC211', srv_link_html),
+                                         ('text/xml', 'ISO19115:2003', srv_link_xml),
+                                         ('text/html', 'TC211', srv_link_html),
+                                         ('text/xml', 'ISO19115:2003', srv_link_xml),]
+                # rzourc.metadata_links.append(('text/html', 'other', 'hohoho'))
+                cat.save(rzourc)
 
-            # if layer.name == "bd_topo_reseau_routier_route_primaire":
-            #     print(type(layer.resource.metadata), layer.resource.metadata)
-            #     print(layer.resource.metadata_links)
-            #     # print(type(layer.resource.metadata_links[0]))
-            #     test = "{}/portail/geocatalogue?uuid=f6512b1a67404e59bb7ff8aba94efe18"\
-            #            .format(url_base)
-            #     print(test)
-            #     # print(dir(layer.resource.writers.get("metadataLinks").func_dict))
-            #     # print(layer.resource.writers.get("metadataLinks").func_dict.keys())
-            #     # try to set metadata
-            #     rzourc = cat.get_resource("bd_topo_reseau_routier_route_primaire",
-            #                               store=layer.resource._store.name)
-            #     print(type(rzourc), dir(rzourc))
-            #     print(type(rzourc.metadata_links))
-            #     rzourc.metadata_links = [('text/html', 'other', 'hohoho'),]
-            #     # rzourc.metadata_links.append(('text/html', 'other', 'hohoho'))
-            #     cat.save(rzourc)
-
-            # else:
-            #     pass
+            else:
+                logging.info("Service without metadata: {} ({})".format(lyr_name,
+                                                                        dict_match_gs_md.get(lyr_name)))
+                pass
 
             dico_layers[layer.name] = {"title": lyr_title,
                                        "workspace": lyr_wkspace,
@@ -270,6 +281,7 @@ class ReadGeoServer():
                                        "md_link_mapfish_wcs": md_link_mapfish_wcs,
                                        "md_link_oc_wms": md_link_oc_wms,
                                        "md_link_oc_wfs": md_link_oc_wfs,
+                                       "md_link_oc_wcs": md_link_oc_wcs,
                                        "md_link_csw_wms": md_link_csw_wms,
                                        "md_link_csw_wfs": md_link_csw_wfs,
                                        "gs_link_edit": gs_link_edit,
@@ -334,7 +346,7 @@ if __name__ == '__main__':
     # ------------------------------------------------------------------------
 
     # METADATA Links for GeoServer
-    wb = load_workbook(filename=input_xlsx,
+    wb = load_workbook(filename=path.normpath(input_xlsx),
                        read_only=True,
                        guess_types=True,
                        data_only=True,
