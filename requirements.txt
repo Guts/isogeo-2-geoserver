@@ -15,7 +15,7 @@ arrow
 requests
 gsconfig
 isogeo-pysdk
-openpyxl
+openpyxl==2.3.5
 
 # art of code 
 pylint
