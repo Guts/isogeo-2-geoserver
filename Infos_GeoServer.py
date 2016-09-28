@@ -93,7 +93,8 @@ def is_uuid(uuid_string, version=4):
     except ValueError:
         return False
     except TypeError:
-        logger.error("uuid must be a string")
+        logger.error("uuid must be a string. Not: {} ({})".format(type(uuid_string),
+                                                                       uuid_string))
         return False
 
 
