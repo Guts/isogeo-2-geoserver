@@ -258,10 +258,10 @@ class ReadGeoServer():
                 # add to GeoServer layer
                 rzourc = cat.get_resource(lyr_name,
                                           store=layer.resource._store.name)
-                rzourc.metadata_links = [('text/html', 'TC211', srv_link_html),
+                rzourc.metadata_links = [('text/html', 'ISO19115:2003', srv_link_html),
                                          ('text/xml', 'ISO19115:2003', srv_link_xml),
                                          ('text/html', 'TC211', srv_link_html),
-                                         ('text/xml', 'ISO19115:2003', srv_link_xml),]
+                                         ('text/xml', 'TC211', srv_link_xml)]
                 # rzourc.metadata_links.append(('text/html', 'other', 'hohoho'))
                 cat.save(rzourc)
 
