@@ -331,6 +331,7 @@ if __name__ == '__main__':
     app_lang = settings.get('isogeo').get('app_lang')
     csw_share_id = settings.get('isogeo').get('csw_share_id')
     csw_share_token = settings.get('isogeo').get('csw_share_token')
+    csw_share_catalog = settings.get('isogeo').get('csw_share_catalog')
 
     # GeoServer
     gs_url = settings.get('geoserver').get('gs_url')
