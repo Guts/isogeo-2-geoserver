@@ -88,13 +88,16 @@ def is_uuid(uuid_string, version=4):
         # le code hex généré qui doivent être les mêmes.
     """
     try:
-        uid = UUID(uuid_string, version=version)
-        return uid.hex == uuid_string.replace('-', '')
-    except ValueError:
+        uid = UUID(str(uuid_string), version=version)
+        return uid.hex == str(uuid_string).replace('-', '')
+    except ValueError, e:
+        logger.error("uuid ValueError. {} ({})  -- {}".format(type(uuid_string),
+                                                              uuid_string,
+                                                              e))
         return False
     except TypeError:
         logger.error("uuid must be a string. Not: {} ({})".format(type(uuid_string),
-                                                                       uuid_string))
+                                                                  uuid_string))
         return False
 
 
