@@ -44,14 +44,13 @@ from openpyxl.worksheet.properties import WorksheetProperties
 # LOG FILE ##
 logger = logging.getLogger()
 logging.captureWarnings(True)
-logger.setLevel(logging.INFO)  # all errors will be get
+logger.setLevel(logging.DEBUG)  # all errors will be get
 log_form = logging.Formatter("%(asctime)s || %(levelname)s "
                              "|| %(module)s || %(message)s")
-logfile = RotatingFileHandler("LOG_infos_geoserver.log", "a", 10000000, 2)
-logfile.setLevel(logging.INFO)
+logfile = RotatingFileHandler("LOG_isogeo_geoserver.log", "a", 10000000, 2)
+logfile.setLevel(logging.DEBUG)
 logfile.setFormatter(log_form)
 logger.addHandler(logfile)
-logger.info('=================================================')
 
 # ############################################################################
 # ########## FUNCTIONS #############
@@ -311,8 +310,7 @@ class ReadGeoServer():
 # ##################################
 
 if __name__ == '__main__':
-    u""" standalone execution for tests. Paths are relative considering a test
-    within the official repository (https://github.com/Guts/DicoGIS/)"""
+    u"""Standalone execution for tests."""
     # ------------ Specific imports ---------------------
     from ConfigParser import SafeConfigParser   # to manage options.ini
 
