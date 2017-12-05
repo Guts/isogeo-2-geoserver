@@ -12,3 +12,5 @@ Isogeo to geoserver
 
 | GS_WORKSPACE | GS_DATASTORE_NAME | GS_DATASTORE_TYPE | GS_SOURCE_TYPE | GS_NOM | GS_TITRE	MD | ISOGEO_UUID |
 | :--: | :-- | :--: | :--: | :--: | :--: | :--: |
+| GeoServer Workspace name | GeoServer datastore name | GeoServer datastore type | GeoServer source type | GeoServer layer name | GeoServer layer title | Isogeo resource ID |
+
